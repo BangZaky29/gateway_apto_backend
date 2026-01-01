@@ -7,6 +7,7 @@ exports.login = (req, res) => {
   const { email, password } = req.body;
 
   db.query('SELECT * FROM admins WHERE email=?', [email], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Database error', error: err });
     if (!rows.length) return res.status(404).json({ message: 'Admin not found' });
 
     if (!bcrypt.compareSync(password, rows[0].password))
@@ -20,22 +21,30 @@ exports.login = (req, res) => {
 exports.payments = (req, res) => {
   db.query(
     `SELECT 
-      pc.id,
-      pc.payment_id,
-      pc.email,
-      pc.phone,
+      p.id,
+      p.id as payment_id,
+      COALESCE(pc.email, u.email) as email,
+      COALESCE(pc.phone, u.phone) as phone,
       pc.proof_image,
-      pc.created_at
-     FROM payment_confirmations pc
-     LEFT JOIN payments p ON p.id = pc.payment_id
-     WHERE p.status = 'pending' OR p.id IS NULL`,
+      p.created_at,
+      p.status,
+      p.amount,
+      pk.name as package_name
+     FROM payments p
+     LEFT JOIN packages pk ON pk.id = p.package_id
+     LEFT JOIN users u ON u.id = p.user_id
+     LEFT JOIN payment_confirmations pc ON pc.payment_id = p.id
+     WHERE p.status = 'pending'
+     ORDER BY p.created_at DESC`,
     (err, rows) => {
-      if (err) return res.status(500).json(err);
+      if (err) {
+        console.error('Error fetching payments:', err);
+        return res.status(500).json(err);
+      }
       res.json(rows);
     }
   );
 };
-
 
 exports.activate = (req, res) => {
   const { payment_id } = req.body;
@@ -56,16 +65,27 @@ exports.activate = (req, res) => {
 
       const token = uuid();
 
+      // Insert token for user
       db.query(
-        `INSERT INTO user_tokens (user_id,package_id,token,activated_at,expired_at)
-         VALUES (?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL ? DAY))`,
-        [p.user_id, p.package_id, token, p.duration_days]
+        `INSERT INTO user_tokens (user_id, package_id, token, activated_at, expired_at)
+         VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? DAY))`,
+        [p.user_id, p.package_id, token, p.duration_days],
+        (err) => {
+          if (err) {
+            console.error('Error creating token:', err);
+            return res.status(500).json({ message: 'Failed to create token' });
+          }
+
+          // Update payment status
+          db.query(`UPDATE payments SET status='confirmed' WHERE id=?`, [payment_id], (err) => {
+             if (err) {
+                console.error('Error updating payment status:', err);
+                return res.status(500).json({ message: 'Failed to update payment status' });
+             }
+             res.json({ message: 'Package activated', token });
+          });
+        }
       );
-
-      db.query(`UPDATE payments SET status='confirmed' WHERE id=?`, [payment_id]);
-
-      res.json({ message: 'Package activated', token });
     }
   );
 };
-
