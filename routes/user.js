@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // routes/user.js - User Management
 // ==========================================
 const express = require('express');
@@ -27,8 +27,7 @@ router.get('/', adminAuth, (req, res) => {
       SELECT user_id, token, package_id, activated_at, expired_at
       FROM user_tokens
       WHERE expired_at > NOW()
-      ORDER BY created_at DESC
-    ) ut ON ut.user_id = u.id
+      ORDER BY activated_at DESC) ut ON ut.user_id = u.id
     LEFT JOIN packages p ON p.id = ut.package_id
     ORDER BY u.created_at DESC
   `;
