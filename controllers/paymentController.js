@@ -3,7 +3,7 @@ const multer = require('multer');
 
 const upload = multer({ dest: 'uploads/' });
 
-exports.create = (req, res) => {
+exports.create = (req, res) => { 
   const { package_id, method } = req.body;
 
   db.query(
