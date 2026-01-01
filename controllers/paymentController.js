@@ -1,7 +1,18 @@
 const db = require('../config/db');
+const path = require('path');
+const crypto = require('crypto');
 const multer = require('multer');
 
-const upload = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const name = crypto.randomBytes(16).toString('hex') + ext;
+    cb(null, name);
+  }
+});
+
+const upload = multer({ storage });
 
 exports.create = (req, res) => { 
   const { package_id, method } = req.body;
