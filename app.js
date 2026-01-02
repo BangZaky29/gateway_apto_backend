@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const paymentRoutes = require('./routes/payment');
 const adminRoutes = require('./routes/admin');
 const featureRoutes = require('./routes/feature');
+const linkRoutes = require('./routes/link');
 
 // New routes - Need to be created
 const packageRoutes = require('./routes/package');
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feature', featureRoutes);
+app.use('/api/link', linkRoutes);
 
 // New routes for dashboard
 app.use('/api/packages', packageRoutes);
