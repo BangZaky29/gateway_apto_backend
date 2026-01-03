@@ -1,10 +1,11 @@
 ﻿// ==========================================
-// routes/user.js - User Management
+// routes/user.js - User Management - UPDATED
 // ==========================================
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const adminAuth = require('../middlewares/adminMiddleware');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 // GET all users with their package info (admin only)
 router.get('/', adminAuth, (req, res) => {
@@ -33,6 +34,26 @@ router.get('/', adminAuth, (req, res) => {
   `;
 
   db.query(query, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// GET current user's tokens/subscriptions
+router.get('/tokens', authMiddleware, (req, res) => {
+  const query = `
+    SELECT 
+      ut.*,
+      p.name as package_name,
+      p.price,
+      p.duration_days
+    FROM user_tokens ut
+    JOIN packages p ON p.id = ut.package_id
+    WHERE ut.user_id = ?
+    ORDER BY ut.activated_at DESC
+  `;
+
+  db.query(query, [req.user.id], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
