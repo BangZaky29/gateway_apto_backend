@@ -1,7 +1,13 @@
+// =========================================
+// FILE: controllers/authController.js - UPDATED
+// Added: Auto Trial Package on Register
+// =========================================
+
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { generateOtp } = require('../utils/otp');
+const { v4: uuid } = require('uuid');
 
 exports.register = (req, res) => {
   const { name, email, phone, password } = req.body;
@@ -13,16 +19,46 @@ exports.register = (req, res) => {
     (err, result) => {
       if (err) return res.status(400).json(err);
 
+      const userId = result.insertId;
       const otp = generateOtp();
+      
+      // Insert OTP
       db.query(
         'INSERT INTO otp_verifications (user_id,otp_code,expired_at) VALUES (?,?,DATE_ADD(NOW(), INTERVAL 5 MINUTE))',
-        [result.insertId, otp]
+        [userId, otp],
+        (err) => {
+          if (err) console.error('OTP insert error:', err);
+        }
+      );
+
+      // ✅ AUTO-ACTIVATE TRIAL PACKAGE 3 HARI
+      // Asumsi: package_id 1 adalah paket trial atau buat logic khusus
+      const trialToken = uuid();
+      const trialPackageId = 1; // Sesuaikan dengan ID package trial di DB Anda
+      
+      db.query(
+        `INSERT INTO user_tokens (user_id, package_id, token, activated_at, expired_at, is_active)
+         VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY), 1)`,
+        [userId, trialPackageId, trialToken],
+        (err) => {
+          if (err) {
+            console.error('Trial package activation error:', err);
+          } else {
+            console.log(`✅ Trial package activated for user ${userId}`);
+          }
+        }
       );
 
       // ⚠️ nanti diganti send WA API
       console.log('OTP:', otp);
 
-      res.json({ message: 'Register success, OTP sent' });
+      res.json({ 
+        message: 'Register success, OTP sent. Trial package activated!',
+        trial: {
+          duration: '3 days',
+          package: 'Trial Package'
+        }
+      });
     }
   );
 };
@@ -75,7 +111,6 @@ exports.me = (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
 
-    // ambil user dari database
     db.query('SELECT id, name, email, phone, is_verified FROM users WHERE id=?', [userId], (err, rows) => {
       if (err || !rows.length) return res.status(404).json({ message: 'User not found' });
       res.json(rows[0]);
@@ -84,4 +119,3 @@ exports.me = (req, res) => {
     res.status(401).json({ message: 'Invalid token' });
   }
 };
-
