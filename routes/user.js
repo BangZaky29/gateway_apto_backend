@@ -11,27 +11,38 @@ const authMiddleware = require('../middlewares/authMiddleware');
 router.get('/', adminAuth, (req, res) => {
   const query = `
     SELECT 
-      u.id,
-      u.name,
-      u.email,
-      u.phone,
-      u.is_verified,
-      u.created_at,
-      ut.token,
-      ut.activated_at,
-      ut.expired_at,
-      p.id as package_id,
-      p.name as package_name,
-      p.price as package_price
-    FROM users u
-    LEFT JOIN (
-      SELECT user_id, token, package_id, activated_at, expired_at
-      FROM user_tokens
-      WHERE expired_at > NOW()
-      ORDER BY activated_at DESC) ut ON ut.user_id = u.id
-    LEFT JOIN packages p ON p.id = ut.package_id
-    ORDER BY u.created_at DESC
-  `;
+  u.id,
+  u.name,
+  u.email,
+  u.phone,
+  u.is_verified,
+  u.created_at,
+  ut.token,
+  ut.activated_at,
+  ut.expired_at,
+  p.id as package_id,
+  p.name as package_name,
+  p.price as package_price
+FROM users u
+LEFT JOIN (
+  SELECT 
+    t1.user_id, 
+    t1.token, 
+    t1.package_id, 
+    t1.activated_at, 
+    t1.expired_at, 
+    t1.is_active
+  FROM user_tokens t1
+  INNER JOIN (
+    SELECT user_id, MAX(activated_at) as latest_activation
+    FROM user_tokens
+    WHERE is_active = 1 AND expired_at > NOW()
+    GROUP BY user_id
+  ) t2 ON t1.user_id = t2.user_id AND t1.activated_at = t2.latest_activation
+) ut ON ut.user_id = u.id
+LEFT JOIN packages p ON p.id = ut.package_id
+ORDER BY u.created_at DESC`;
+
 
   db.query(query, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });

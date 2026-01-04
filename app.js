@@ -47,6 +47,8 @@ app.use('/api/auth', authRoutes);
 // Payment & confirmation
 app.use('/api/payment', paymentRoutes);
 
+
+
 // Admin panel
 app.use('/api/admin', adminRoutes);
 
