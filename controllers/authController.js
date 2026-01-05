@@ -1,6 +1,6 @@
 // =========================================
 // FILE: controllers/authController.js
-// FINAL - Auto Trial Package on Register
+// FINAL - FIX JWT PAYLOAD + ME
 // =========================================
 
 const db = require('../config/db');
@@ -21,7 +21,6 @@ exports.register = (req, res) => {
 
   const hash = bcrypt.hashSync(password, 10);
 
-  // 1️⃣ Insert user
   db.query(
     'INSERT INTO users (name,email,phone,password) VALUES (?,?,?,?)',
     [name, email, phone, hash],
@@ -36,63 +35,37 @@ exports.register = (req, res) => {
       const userId = result.insertId;
       const otp = generateOtp();
 
-      // 2️⃣ Insert OTP
+      // OTP
       db.query(
         `INSERT INTO otp_verifications 
          (user_id, otp_code, expired_at)
          VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
-        [userId, otp],
-        (err) => {
-          if (err) console.error('OTP insert error:', err);
-        }
+        [userId, otp]
       );
 
-      // 3️⃣ Ambil paket trial dari database
+      // Trial package
       db.query(
         `SELECT id, duration_days 
          FROM packages 
          WHERE is_trial = 1 AND is_active = 1 
          LIMIT 1`,
         (err, rows) => {
-          if (err || !rows.length) {
-            console.error('❌ Trial package tidak ditemukan');
-            return;
+          if (!err && rows.length) {
+            const trial = rows[0];
+            db.query(
+              `INSERT INTO user_tokens
+               (user_id, package_id, token, activated_at, expired_at, is_active, is_trial)
+               VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 1, 1)`,
+              [userId, trial.id, uuid(), trial.duration_days]
+            );
           }
-
-          const trialPackage = rows[0];
-          const trialToken = uuid();
-
-          // 4️⃣ Insert token trial
-          db.query(
-            `INSERT INTO user_tokens
-             (user_id, package_id, token, activated_at, expired_at, is_active, is_trial)
-             VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 1, 1)`,
-            [
-              userId,
-              trialPackage.id,
-              trialToken,
-              trialPackage.duration_days,
-            ],
-            (err) => {
-              if (err) {
-                console.error('❌ Trial activation error:', err);
-              } else {
-                console.log(`✅ Trial package activated for user ${userId}`);
-              }
-            }
-          );
         }
       );
 
-      // ⚠️ sementara log OTP
       console.log('OTP:', otp);
 
-      // 5️⃣ Response
       res.json({
-        message: 'Register success, OTP sent. Trial package activated!',
-        trial: {
-          duration: 'Trial aktif',
-        },
+        message: 'Register success, OTP sent. Trial package activated'
       });
     }
   );
@@ -105,7 +78,7 @@ exports.verifyOtp = (req, res) => {
   const { email, otp } = req.body;
 
   db.query(
-    `SELECT o.*
+    `SELECT o.id, o.user_id
      FROM otp_verifications o
      JOIN users u ON u.id = o.user_id
      WHERE u.email = ?
@@ -118,17 +91,10 @@ exports.verifyOtp = (req, res) => {
         return res.status(400).json({ message: 'OTP tidak valid' });
       }
 
-      const otpRow = rows[0];
+      const data = rows[0];
 
-      db.query(
-        'UPDATE otp_verifications SET is_used = 1 WHERE id = ?',
-        [otpRow.id]
-      );
-
-      db.query(
-        'UPDATE users SET is_verified = 1 WHERE id = ?',
-        [otpRow.user_id]
-      );
+      db.query('UPDATE otp_verifications SET is_used = 1 WHERE id = ?', [data.id]);
+      db.query('UPDATE users SET is_verified = 1 WHERE id = ?', [data.user_id]);
 
       res.json({ message: 'OTP verified successfully' });
     }
@@ -136,7 +102,7 @@ exports.verifyOtp = (req, res) => {
 };
 
 /**
- * LOGIN
+ * LOGIN (🔥 FIX JWT PAYLOAD)
  */
 exports.login = (req, res) => {
   const { email, password } = req.body;
@@ -155,19 +121,24 @@ exports.login = (req, res) => {
         return res.status(401).json({ message: 'Password salah' });
       }
 
-      const token = jwt.sign(
-        { id: user.id },
-        process.env.JWT_SECRET,
-        { expiresIn: '1d' }
-      );
+      // ✅ FIXED PAYLOAD
+        const token = jwt.sign(
+          {
+            id: user.id,           // PENTING
+            email: user.email,
+            role: 'user'
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: '7d' }
+        );
 
-      res.json({ token });
+        res.json({ token });
     }
   );
 };
 
 /**
- * ME
+ * ME (🔥 FIX decoded.user_id)
  */
 exports.me = (req, res) => {
   const authHeader = req.headers.authorization;
@@ -182,7 +153,7 @@ exports.me = (req, res) => {
 
     db.query(
       'SELECT id, name, email, phone, is_verified FROM users WHERE id = ?',
-      [decoded.id],
+      [decoded.user_id], // ✅ FIX
       (err, rows) => {
         if (err || !rows.length) {
           return res.status(404).json({ message: 'User not found' });
@@ -190,7 +161,7 @@ exports.me = (req, res) => {
         res.json(rows[0]);
       }
     );
-  } catch (err) {
+  } catch {
     res.status(401).json({ message: 'Invalid token' });
   }
 };

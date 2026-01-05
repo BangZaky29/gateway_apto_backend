@@ -1,5 +1,5 @@
 ﻿// ==========================================
-// routes/user.js - User Management - UPDATED
+// routes/user.js - User Management - FINAL
 // ==========================================
 const express = require('express');
 const router = express.Router();
@@ -7,50 +7,34 @@ const db = require('../config/db');
 const adminAuth = require('../middlewares/adminMiddleware');
 const authMiddleware = require('../middlewares/authMiddleware');
 
-// GET all users with their package info (admin only)
-router.get('/', adminAuth, (req, res) => {
+// ================================
+// GET CURRENT USER PROFILE
+// ================================
+router.get('/me', authMiddleware, (req, res) => {
   const query = `
     SELECT 
-  u.id,
-  u.name,
-  u.email,
-  u.phone,
-  u.is_verified,
-  u.created_at,
-  ut.token,
-  ut.activated_at,
-  ut.expired_at,
-  p.id as package_id,
-  p.name as package_name,
-  p.price as package_price
-FROM users u
-LEFT JOIN (
-  SELECT 
-    t1.user_id, 
-    t1.token, 
-    t1.package_id, 
-    t1.activated_at, 
-    t1.expired_at, 
-    t1.is_active
-  FROM user_tokens t1
-  INNER JOIN (
-    SELECT user_id, MAX(activated_at) as latest_activation
-    FROM user_tokens
-    WHERE is_active = 1 AND expired_at > NOW()
-    GROUP BY user_id
-  ) t2 ON t1.user_id = t2.user_id AND t1.activated_at = t2.latest_activation
-) ut ON ut.user_id = u.id
-LEFT JOIN packages p ON p.id = ut.package_id
-ORDER BY u.created_at DESC`;
+      id,
+      name,
+      email,
+      phone,
+      is_verified,
+      created_at
+    FROM users
+    WHERE id = ?
+  `;
 
-
-  db.query(query, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+  db.query(query, [req.user.id], (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
+    if (!rows.length) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(rows[0]);
   });
 });
 
-// GET current user's tokens/subscriptions
+// ================================
+// GET CURRENT USER TOKENS
+// ================================
 router.get('/tokens', authMiddleware, (req, res) => {
   const query = `
     SELECT 
@@ -65,47 +49,30 @@ router.get('/tokens', authMiddleware, (req, res) => {
   `;
 
   db.query(query, [req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) return res.status(500).json({ message: err.message });
     res.json(rows);
   });
 });
 
-// GET user by ID (admin only)
-router.get('/:id', adminAuth, (req, res) => {
+// ================================
+// GET ALL USERS (ADMIN)
+// ================================
+router.get('/', adminAuth, (req, res) => {
   const query = `
     SELECT 
-      u.*,
-      ut.token,
-      ut.expired_at,
-      p.name as package_name
+      u.id,
+      u.name,
+      u.email,
+      u.phone,
+      u.is_verified,
+      u.created_at
     FROM users u
-    LEFT JOIN user_tokens ut ON ut.user_id = u.id AND ut.expired_at > NOW()
-    LEFT JOIN packages p ON p.id = ut.package_id
-    WHERE u.id = ?
+    ORDER BY u.created_at DESC
   `;
 
-  db.query(query, [req.params.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!rows.length) return res.status(404).json({ message: 'User not found' });
-    res.json(rows[0]);
-  });
-});
-
-// GET user statistics (admin only)
-router.get('/stats/summary', adminAuth, (req, res) => {
-  const stats = {};
-
-  db.query('SELECT COUNT(*) as total FROM users', (err, rows) => {
-    stats.total = rows[0].total;
-
-    db.query('SELECT COUNT(*) as verified FROM users WHERE is_verified=1', (err, rows) => {
-      stats.verified = rows[0].verified;
-
-      db.query('SELECT COUNT(*) as active FROM user_tokens WHERE expired_at > NOW()', (err, rows) => {
-        stats.activeSubscriptions = rows[0].active;
-        res.json(stats);
-      });
-    });
+  db.query(query, (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
+    res.json(rows);
   });
 });
 
