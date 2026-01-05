@@ -57,6 +57,9 @@ router.get('/tokens', authMiddleware, (req, res) => {
 // ================================
 // GET ALL USERS (ADMIN)
 // ================================
+// ================================
+// GET ALL USERS (ADMIN) - WITH PACKAGE STATUS
+// ================================
 router.get('/', adminAuth, (req, res) => {
   const query = `
     SELECT 
@@ -65,8 +68,22 @@ router.get('/', adminAuth, (req, res) => {
       u.email,
       u.phone,
       u.is_verified,
-      u.created_at
+      u.created_at,
+
+      ut.package_id,
+      p.name AS package_name,
+      ut.expired_at,
+      ut.is_active
+
     FROM users u
+    LEFT JOIN user_tokens ut 
+      ON ut.user_id = u.id
+      AND ut.is_active = 1
+      AND ut.expired_at > NOW()
+
+    LEFT JOIN packages p 
+      ON p.id = ut.package_id
+
     ORDER BY u.created_at DESC
   `;
 
@@ -75,5 +92,6 @@ router.get('/', adminAuth, (req, res) => {
     res.json(rows);
   });
 });
+
 
 module.exports = router;
