@@ -4,8 +4,12 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+
 const adminAuth = require('../middlewares/adminMiddleware');
 const authMiddleware = require('../middlewares/authMiddleware');
+
+// Feature Access Controller
+const featureAccessController = require('../controllers/featureAccessController');
 
 // ================================
 // GET CURRENT USER PROFILE
@@ -39,7 +43,7 @@ router.get('/tokens', authMiddleware, (req, res) => {
   const query = `
     SELECT 
       ut.*,
-      p.name as package_name,
+      p.name AS package_name,
       p.price,
       p.duration_days
     FROM user_tokens ut
@@ -54,9 +58,33 @@ router.get('/tokens', authMiddleware, (req, res) => {
   });
 });
 
-// ================================
-// GET ALL USERS (ADMIN)
-// ================================
+
+// ======================================================
+// FEATURE ACCESS ROUTES (🔥 INI YANG HILANG SEBELUMNYA)
+// ======================================================
+
+// GET /api/users/feature-access-status
+router.get(
+  '/feature-access-status',
+  authMiddleware,
+  featureAccessController.getFeatureAccessStatus
+);
+
+// GET /api/users/feature-access-details
+router.get(
+  '/feature-access-details',
+  authMiddleware,
+  featureAccessController.getFeatureAccessDetails
+);
+
+// POST /api/users/check-feature-access
+router.post(
+  '/check-feature-access',
+  authMiddleware,
+  featureAccessController.checkFeatureAccess
+);
+
+
 // ================================
 // GET ALL USERS (ADMIN) - WITH PACKAGE STATUS
 // ================================
@@ -92,6 +120,5 @@ router.get('/', adminAuth, (req, res) => {
     res.json(rows);
   });
 });
-
 
 module.exports = router;
