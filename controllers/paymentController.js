@@ -3,6 +3,9 @@
 // Path: gateway_apto-backend/controllers/paymentController.js
 // =========================================
 
+const whatsappClient = require('../utils/whatsappClient');
+const { logInfo, logError } = require('../middlewares/logger');
+
 const PDFDocument = require('pdfkit');
 const db = require('../config/db');
 const path = require('path');
@@ -164,7 +167,7 @@ exports.confirm = [
         // Simpan confirmation
         db.query(
           `INSERT INTO payment_confirmations (payment_id, email, phone, proof_image, created_at)
-           VALUES (?, ?, ?, ?, NOW())`,
+          VALUES (?, ?, ?, ?, NOW())`,
           [payment_id, email, phone, req.file.filename],
           (err2) => {
             if (err2) {
@@ -175,7 +178,58 @@ exports.confirm = [
               });
             }
 
-            // ✅ FIXED: Kirim success: true
+            res.json({ 
+              success: true,
+              message: 'Bukti berhasil dikirim, menunggu approval admin' 
+            });
+          }
+        );
+        db.query(
+          `INSERT INTO payment_confirmations (payment_id, email, phone, proof_image, created_at)
+          VALUES (?, ?, ?, ?, NOW())`,
+          [payment_id, email, phone, req.file.filename],
+          async (err2) => {
+            if (err2) {
+              logError(err2, 'Payment Confirmation Save');
+              return res.status(500).json({ 
+                success: false,
+                message: 'Error saving confirmation', 
+                error: err2 
+              });
+            }
+
+            logInfo(`Payment confirmation received: Payment ID ${payment_id}`);
+
+            // 🆕 Get package and user info for notification
+            db.query(
+              `SELECT p.amount, pk.name as package_name, u.name as user_name, u.phone
+              FROM payments p
+              JOIN packages pk ON pk.id = p.package_id
+              JOIN users u ON u.id = p.user_id
+              WHERE p.id = ?`,
+              [payment_id],
+              async (err3, paymentInfo) => {
+                if (!err3 && paymentInfo.length > 0) {
+                  const info = paymentInfo[0];
+                  
+                  // Send WhatsApp notification
+                  try {
+                    if (whatsappClient.isReady) {
+                      await whatsappClient.sendPaymentReceived(
+                        info.phone,
+                        info.user_name,
+                        info.package_name,
+                        info.amount
+                      );
+                      logInfo(`Payment received notification sent to ${info.phone}`);
+                    }
+                  } catch (waError) {
+                    logError(waError, 'WhatsApp Payment Received Notification');
+                  }
+                }
+              }
+            );
+
             res.json({ 
               success: true,
               message: 'Bukti berhasil dikirim, menunggu approval admin' 
@@ -399,27 +453,97 @@ exports.adminActivatePayment = (req, res) => {
               }
 
               // Buat token baru
-              db.query(
-                `INSERT INTO user_tokens 
-                 (user_id, package_id, token, activated_at, expired_at, is_active, is_trial)
-                 VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL (SELECT duration_days FROM packages WHERE id=?) DAY), 1, 0)`,
-                [user_id, package_id, crypto.randomUUID(), package_id],
-                (err4) => {
-                  if (err4) {
-                    return res.status(500).json({ 
-                      success: false,
-                      message: 'Error creating new token', 
-                      error: err4 
-                    });
-                  }
+              // Replace the final res.json section in adminActivatePayment with:
+db.query(
+  `INSERT INTO user_tokens 
+   (user_id, package_id, token, activated_at, expired_at, is_active, is_trial)
+   VALUES (?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL (SELECT duration_days FROM packages WHERE id=?) DAY), 1, 0)`,
+  [user_id, package_id, crypto.randomUUID(), package_id],
+  async (err4) => {
+    if (err4) {
+      logError(err4, 'Token Creation');
+      return res.status(500).json({ 
+        success: false,
+        message: 'Error creating new token', 
+        error: err4 
+      });
+    }
 
-                  // ✅ FIXED: Success response
-                  res.json({ 
-                    success: true,
-                    message: 'Payment approved & package activated successfully' 
-                  });
-                }
-              );
+    logInfo(`Payment approved and package activated: Payment ID ${paymentId}, User ID ${user_id}`);
+
+                // 🆕 Get user and package info for notification
+                db.query(
+                  `SELECT u.name, u.phone, pk.name as package_name, 
+                          DATE_FORMAT(DATE_ADD(NOW(), INTERVAL pk.duration_days DAY), '%d %M %Y') as expiry_date
+                  FROM users u
+                  JOIN packages pk ON pk.id = ?
+                  WHERE u.id = ?`,
+                  [package_id, user_id],
+                  async (err5, userInfo) => {
+                    if (!err5 && userInfo.length > 0) {
+                      const info = userInfo[0];
+                      
+                      // Send approval notification
+                      try {
+                        if (whatsappClient.isReady) {
+                          await whatsappClient.sendPaymentApproved(
+                            info.phone,
+                            info.name,
+                            info.package_name,
+                            info.expiry_date
+                          );
+                          logInfo(`Payment approved notification sent to ${info.phone}`);
+                        }
+                      } catch (waError) {
+                        logError(waError, 'WhatsApp Payment Approved Notification');
+                      }
+                    }
+                  }
+                  
+                );
+                exports.checkExpiringPackages = async () => {
+                // Find packages expiring in 3 days
+                db.query(
+                  `SELECT ut.user_id, u.name, u.phone, pk.name as package_name,
+                          DATEDIFF(ut.expired_at, NOW()) as days_left
+                  FROM user_tokens ut
+                  JOIN users u ON u.id = ut.user_id
+                  JOIN packages pk ON pk.id = ut.package_id
+                  WHERE ut.is_active = 1
+                  AND DATEDIFF(ut.expired_at, NOW()) = 3`,
+                  async (err, expiring) => {
+                    if (err) {
+                      logError(err, 'Check Expiring Packages');
+                      return;
+                    }
+
+                    for (const item of expiring) {
+                      try {
+                        if (whatsappClient.isReady) {
+                          await whatsappClient.sendExpiryWarning(
+                            item.phone,
+                            item.name,
+                            item.package_name,
+                            item.days_left
+                          );
+                          logInfo(`Expiry warning sent to ${item.phone}`);
+                        }
+                      } catch (waError) {
+                        logError(waError, 'WhatsApp Expiry Warning');
+                      }
+                    }
+                  }
+                );
+              };
+
+
+                res.json({ 
+                  success: true,
+                  message: 'Payment approved & package activated successfully' 
+                });
+              }
+            );
+
             }
           );
         }

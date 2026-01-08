@@ -1,0 +1,15 @@
+2026/01/08-13:31:20.886 4fbc Reusing MANIFEST C:\codingVibes\nuansasolution\.mainweb\payment-tools\gateway_apto-backend\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/08-13:31:20.887 4fbc Recovering log #296
+2026/01/08-13:31:21.001 4fbc Reusing old log C:\codingVibes\nuansasolution\.mainweb\payment-tools\gateway_apto-backend\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000296.log 
+2026/01/08-13:31:24.162 4cd8 Level-0 table #302: started
+2026/01/08-13:31:24.286 4cd8 Level-0 table #302: 1054531 bytes OK
+2026/01/08-13:31:24.288 4cd8 Delete type=0 #296
+2026/01/08-13:31:24.291 4cd8 Manual compaction at level-0 from '\x00a\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00b\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/08-13:31:24.297 4cd8 Compacting 1@1 + 2@2 files
+2026/01/08-13:31:24.502 4cd8 Generated table #303@1: 41095 keys, 2213482 bytes
+2026/01/08-13:31:24.606 4cd8 Generated table #304@1: 43002 keys, 1804359 bytes
+2026/01/08-13:31:24.606 4cd8 Compacted 1@1 + 2@2 files => 4017841 bytes
+2026/01/08-13:31:24.606 4cd8 compacted to: files[ 0 0 2 0 0 0 0 ]
+2026/01/08-13:31:24.607 4cd8 Delete type=2 #298
+2026/01/08-13:31:24.607 4cd8 Delete type=2 #299
+2026/01/08-13:31:24.607 4cd8 Delete type=2 #302
