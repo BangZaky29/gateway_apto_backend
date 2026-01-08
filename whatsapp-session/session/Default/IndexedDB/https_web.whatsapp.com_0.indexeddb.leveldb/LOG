@@ -1,15 +1,15 @@
-2026/01/08-13:51:52.191 357c Reusing MANIFEST C:\codingVibes\nuansasolution\.mainweb\payment-tools\gateway_apto-backend\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/01/08-13:51:52.204 357c Recovering log #301
-2026/01/08-13:51:52.445 357c Reusing old log C:\codingVibes\nuansasolution\.mainweb\payment-tools\gateway_apto-backend\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000301.log 
-2026/01/08-13:51:54.598 629c Level-0 table #307: started
-2026/01/08-13:51:54.652 629c Level-0 table #307: 463631 bytes OK
-2026/01/08-13:51:54.656 629c Delete type=0 #301
-2026/01/08-13:51:54.658 357c Manual compaction at level-0 from '\x00b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00c\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/01/08-13:51:54.726 357c Compacting 1@1 + 2@2 files
-2026/01/08-13:51:54.950 357c Generated table #308@1: 41818 keys, 2218165 bytes
-2026/01/08-13:51:55.075 357c Generated table #309@1: 44378 keys, 1870509 bytes
-2026/01/08-13:51:55.075 357c Compacted 1@1 + 2@2 files => 4088674 bytes
-2026/01/08-13:51:55.076 357c compacted to: files[ 0 0 2 0 0 0 0 ]
-2026/01/08-13:51:55.077 357c Delete type=2 #303
-2026/01/08-13:51:55.077 357c Delete type=2 #304
-2026/01/08-13:51:55.077 357c Delete type=2 #307
+2026/01/08-14:20:09.963 1e20 Reusing MANIFEST C:\codingVibes\nuansasolution\.mainweb\payment-tools\gateway_apto-backend\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/08-14:20:09.966 1e20 Recovering log #326
+2026/01/08-14:20:09.985 1e20 Reusing old log C:\codingVibes\nuansasolution\.mainweb\payment-tools\gateway_apto-backend\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000326.log 
+2026/01/08-14:20:11.656 4ad8 Level-0 table #332: started
+2026/01/08-14:20:11.683 4ad8 Level-0 table #332: 159565 bytes OK
+2026/01/08-14:20:11.690 4ad8 Delete type=0 #326
+2026/01/08-14:20:11.699 4ad8 Manual compaction at level-0 from '\x00g\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00h\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/01/08-14:20:11.853 300c Compacting 1@1 + 2@2 files
+2026/01/08-14:20:12.158 300c Generated table #333@1: 44833 keys, 2226028 bytes
+2026/01/08-14:20:12.314 300c Generated table #334@1: 44548 keys, 1958035 bytes
+2026/01/08-14:20:12.314 300c Compacted 1@1 + 2@2 files => 4184063 bytes
+2026/01/08-14:20:12.315 300c compacted to: files[ 0 0 2 0 0 0 0 ]
+2026/01/08-14:20:12.316 300c Delete type=2 #328
+2026/01/08-14:20:12.316 300c Delete type=2 #329
+2026/01/08-14:20:12.316 300c Delete type=2 #332
